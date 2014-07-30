@@ -1050,10 +1050,13 @@ class NonConsolidatableMixIn(object):
 
         # kludgetastic
         if ndim is None:
-            if len(placement) != 1:
+            if type(placement) == slice:
                 ndim = 1
             else:
-                ndim = 2
+                if len(placement) != 1:
+                    ndim = 1
+                else:
+                    ndim = 2
         self.ndim = ndim
 
         self.mgr_locs = placement
