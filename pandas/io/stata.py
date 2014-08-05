@@ -1121,7 +1121,7 @@ class StataWriter(StataParser):
         self._write_index = write_index
         self._time_stamp = time_stamp
         self._data_label = data_label
-        # attach nobs, nvars, data, varlist, typlist
+        # attach nobs, nvars, data, lbllist, varlist, typlist
         self._prepare_pandas(data)
 
         if byteorder is None:
@@ -1247,6 +1247,30 @@ class StataWriter(StataParser):
         data = _cast_to_stata_types(data)
         # Ensure column names are strings
         data = self._check_column_names(data)
+
+        # EPRI Label Hack
+        self.lbllist = []
+        self.lablval = {}
+        for col in data.columns:
+            try:
+                if data[col].dtype == Categorical.dtype:
+                    self.lbllist.append(_pad_bytes(data[col].name, 33))
+                    self.lablval[data[col].name] = data[col].cat.levels.tolist()
+                else:
+                    self.lbllist.append(_pad_bytes("", 33))
+            except TypeError:
+                self.lbllist.append(_pad_bytes("", 33))
+
+        # EPRI Categorical hack: cats as ints
+        if isinstance(data, DataFrame):
+            for coltype in data.columns:
+                try:
+                    if data[coltype].dtype == Categorical.dtype:
+                        data[coltype] = data[coltype].cat._codes
+                        data.loc[data[coltype] < 0, coltype] = np.nan
+                except TypeError:
+                    pass
+
         # Replace NaNs with Stata missing values
         data = self._replace_nans(data)
         self.datarows = DataFrameRowIter(data)
@@ -1281,7 +1305,7 @@ class StataWriter(StataParser):
             self._write_data_nodates()
         else:
             self._write_data_dates()
-        #self._write_value_labels()
+        self._write_value_labels()
         self._file.close()
 
     def _write_header(self, data_label=None, time_stamp=None):
@@ -1339,8 +1363,8 @@ class StataWriter(StataParser):
 
         # lbllist, 33*nvar, char array
         #NOTE: this is where you could get fancy with pandas categorical type
-        for i in range(nvar):
-            self._write(_pad_bytes("", 33))
+        for lbl in self.lbllist:
+            self._write(lbl)
 
     def _write_variable_labels(self, labels=None):
         nvar = self.nvar
@@ -1401,6 +1425,47 @@ class StataWriter(StataParser):
                         self._write(var.encode(self._encoding))
                 else:
                     self._file.write(struct.pack(byteorder+TYPE_MAP[typ], var))
+
+    def _write_value_labels(self):
+        byteorder = self._byteorder
+
+        for labname in self.lablval:
+
+            # Please see Section 5.6 at http://www.stata.com/help.cgi?dta_114
+            # for details of how value labels are put together.
+            # NOTE: The +1 addition (e.g. len(item) + 1) is a result of the
+            #       fact that Stata expects an empty byte for each text item.
+
+            # First deal with the value label table (n, txtlen, off, val, txt)
+            txt = self.lablval[labname]
+
+            n = len(txt)
+            txtlen = sum([len(x) + 1 for x in txt])
+
+            off_cnt, off = 0, []
+            for item in txt:
+                off.append(off_cnt)
+                off_cnt += len(item) + 1
+
+            val = np.arange(0, len(txt)) # Assuming 0...K cat._codes
+
+            # We have everything for the header (len, labname, padding) except
+            # len. We can now calculate it.
+            hlen = 4 + 4 + (4 * len(off)) + (4 * len(val)) + txtlen
+
+            # Write out the value label 'header'
+            self._file.write(struct.pack(byteorder+'i', hlen))
+            self._write(_pad_bytes(labname, 32))
+            self._write(_pad_bytes('', 1))
+            self._write(_pad_bytes('', 3))
+
+            # Write out the value label table
+            self._file.write(struct.pack(byteorder+'i', n))
+            self._file.write(struct.pack(byteorder+'i', txtlen))
+
+            [self._file.write(struct.pack(byteorder+'i', x)) for x in off]
+            [self._file.write(struct.pack(byteorder+'i', x)) for x in val]
+            [self._write(_pad_bytes(x, len(x) + 1)) for x in txt]
 
     def _null_terminate(self, s, as_string=False):
         null_byte = '\x00'
