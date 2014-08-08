@@ -1051,7 +1051,7 @@ class NonConsolidatableMixIn(object):
         # kludgetastic
         if ndim is None:
             if type(placement) == slice:
-                ndim = 1
+                ndim = 2
             else:
                 if len(placement) != 1:
                     ndim = 1
