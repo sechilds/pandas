@@ -1218,8 +1218,11 @@ class StataWriter(StataParser):
         if self._convert_dates:
             for c, o in zip(columns, original_columns):
                 if c != o:
-                    self._convert_dates[c] = self._convert_dates[o]
-                    del self._convert_dates[o]
+                    try:
+                        self._convert_dates[c] = self._convert_dates[o]
+                        del self._convert_dates[o]
+                    except KeyError:
+                        pass
 
         if converted_names:
             import warnings
