@@ -190,7 +190,7 @@ CLASSIFIERS = [
     'Topic :: Scientific/Engineering',
 ]
 
-MAJOR = 0
+MAJOR = 999
 MINOR = 14
 MICRO = 1
 ISRELEASED = False
