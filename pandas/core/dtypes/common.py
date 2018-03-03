@@ -168,6 +168,11 @@ def is_sparse(arr):
     boolean
         Whether or not the array-like is a pandas sparse array.
 
+    See Also
+    --------
+    DataFrame.to_sparse : Convert DataFrame to a SparseDataFrame.
+    Series.to_sparse : Convert Series to SparseSeries.
+
     Examples
     --------
     >>> is_sparse(np.array([1, 2, 3]))
@@ -175,6 +180,13 @@ def is_sparse(arr):
     >>> is_sparse(pd.SparseArray([1, 2, 3]))
     True
     >>> is_sparse(pd.SparseSeries([1, 2, 3]))
+    True
+    >>> df = pd.SparseDataFrame([389., 24., 80.5, np.nan],
+                                columns=['max_speed'],
+                                index=['falcon', 'parrot', 'lion', 'monkey'])
+    >>> is_sparse(df)
+    False
+    >>> is_sparse(df.max_speed)
     True
 
     This function checks only for pandas sparse array instances, so
