@@ -153,17 +153,20 @@ def is_object_dtype(arr_or_dtype):
 
 
 def is_sparse(arr):
-    """
-    Check whether an array-like is a pandas sparse array.
+    """Check whether an array-like is a pandas sparse array.
+
+    Check that the array-like is a pandas sparse array. Only
+    returns True if it is a pandas sparse array.
 
     Parameters
     ----------
     arr : array-like
-        The array-like to check.
+        Array-like to check.
 
     Returns
     -------
-    boolean : Whether or not the array-like is a pandas sparse array.
+    boolean
+        Whether or not the array-like is a pandas sparse array.
 
     Examples
     --------
